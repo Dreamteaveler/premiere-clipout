@@ -4,7 +4,9 @@ Premiere Pro 的中文 CEP 剪辑批量导出面板。**支持 Premiere Pro 2021
 
 运行要求：Windows x64，Premiere Pro 与 Adobe Media Encoder 使用相同主版本，并已安装本机 H.264／WAV 系统预设；补丁号无需一致。
 
-[宣传图（旧版界面示意）](docs/promo.md)
+![ClipOut 1.1.10 实际面板](docs/images/clipout-1.1.10-panel.png)
+
+[截图说明](docs/promo.md)：当前 1.1.10 的真实插件面板，仅裁取插件区域。
 
 ## 使用
 
