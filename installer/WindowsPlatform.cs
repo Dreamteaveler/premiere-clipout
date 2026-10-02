@@ -13,31 +13,34 @@ namespace MarkerExportSetup {
   const string RegistrationKey="Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\PremiereClipExport.ComTexs.MarkerExport";
   string debugKey="";public string DebugKey{get{return debugKey;}}
   public void UseDebugKey(string key){if(!string.IsNullOrEmpty(key)&&!Regex.IsMatch(key,@"^Software\\Adobe\\CSXS\.[1-9][0-9]?$"))throw new Exception("CEP 注册表路径不合法。");debugKey=key;}
+  public string PremiereOverride="";
   public AppInfo InspectApps(){
-   var result=new AppInfo();result.PremierePath=FindApplication("Adobe Premiere Pro.exe","Adobe Premiere Pro 2026");result.EncoderPath=FindApplication("Adobe Media Encoder.exe","Adobe Media Encoder 2026");
+   var result=new AppInfo();result.PremierePath=FindApplication("Adobe Premiere Pro.exe","Adobe Premiere Pro",PremiereOverride);result.EncoderPath=FindApplication("Adobe Media Encoder.exe","Adobe Media Encoder","");
    if(File.Exists(result.PremierePath)){var v=FileVersionInfo.GetVersionInfo(result.PremierePath);result.PremiereVersion=v.ProductVersion;result.PremiereMajor=v.ProductMajorPart;
     string cep=Path.Combine(Path.GetDirectoryName(result.PremierePath),"CEPHtmlEngine","CEPHtmlEngine.exe");if(File.Exists(cep))result.CepMajor=FileVersionInfo.GetVersionInfo(cep).ProductMajorPart;
    }
    if(File.Exists(result.EncoderPath)){var v=FileVersionInfo.GetVersionInfo(result.EncoderPath);result.EncoderVersion=v.ProductVersion;result.EncoderMajor=v.ProductMajorPart;}
    if(result.CepMajor>0)UseDebugKey("Software\\Adobe\\CSXS."+result.CepMajor.ToString(CultureInfo.InvariantCulture));else UseDebugKey("");
    // These roots deliberately match the CEP client's Folder.startup/ProgramFiles lookup.
-   var roots=new List<string>();if(File.Exists(result.PremierePath))roots.Add(Path.Combine(Directory.GetParent(Path.GetDirectoryName(result.PremierePath)).FullName,"Adobe Media Encoder 2026"));
-   foreach(string env in new[]{"ProgramW6432","ProgramFiles"}){string pf=Environment.GetEnvironmentVariable(env);if(!string.IsNullOrEmpty(pf))roots.Add(Path.Combine(pf,"Adobe","Adobe Media Encoder 2026"));}
+   var roots=new List<string>();if(File.Exists(result.EncoderPath))roots.Add(Path.GetDirectoryName(result.EncoderPath));
+   var parents=new List<string>();if(File.Exists(result.PremierePath))parents.Add(Directory.GetParent(Path.GetDirectoryName(result.PremierePath)).FullName);
+   foreach(string env in new[]{"ProgramW6432","ProgramFiles"}){string pf=Environment.GetEnvironmentVariable(env);if(!string.IsNullOrEmpty(pf))parents.Add(Path.Combine(pf,"Adobe"));}
+   foreach(string parent in parents.Distinct(StringComparer.OrdinalIgnoreCase))try{if(Directory.Exists(parent))roots.AddRange(Directory.GetDirectories(parent,"Adobe Media Encoder*").OrderByDescending(x=>x));}catch{}
    foreach(string root in roots.Distinct(StringComparer.OrdinalIgnoreCase)){
     string video=Path.Combine(root,"MediaIO","systempresets","4E49434B_48323634","01 - Match Source - High bitrate.epr"),audio=Path.Combine(root,"MediaIO","systempresets","3F3F3F3F_57415645","Waveform Audio 48kHz 16-bit.epr");
     if(File.Exists(video)&&File.Exists(audio)&&ValidPreset(video)&&ValidPreset(audio)){result.VideoPreset=video;result.AudioPreset=audio;result.PresetsReady=true;break;}
    }return result;
   }
   static bool ValidPreset(string p){try{Engine.Guard(p);var x=Payload.ParseXml(File.ReadAllText(p));return x.Root!=null&&x.Root.Name.LocalName=="PremiereData";}catch{return false;}}
-  static string FindApplication(string executable,string folder){
-   var candidates=new List<string>();foreach(string env in new[]{"ProgramW6432","ProgramFiles"}){string p=Environment.GetEnvironmentVariable(env);if(!string.IsNullOrEmpty(p))candidates.Add(Path.Combine(p,"Adobe",folder,executable));}
+  static string FindApplication(string executable,string folder,string manual){
+   var candidates=new List<string>();if(!string.IsNullOrEmpty(manual))candidates.Add(manual);foreach(string env in new[]{"ProgramW6432","ProgramFiles"}){string p=Environment.GetEnvironmentVariable(env);if(!string.IsNullOrEmpty(p))try{string adobe=Path.Combine(p,"Adobe");if(Directory.Exists(adobe))foreach(string dir in Directory.GetDirectories(adobe,folder+"*").OrderByDescending(x=>x))candidates.Add(Path.Combine(dir,executable));}catch{}}
    foreach(RegistryView view in new[]{RegistryView.Registry64,RegistryView.Registry32})foreach(RegistryHive hive in new[]{RegistryHive.LocalMachine,RegistryHive.CurrentUser}){
     try{using(var root=RegistryKey.OpenBaseKey(hive,view)){
      using(var app=root.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\"+executable)){if(app!=null){var p=app.GetValue("") as string;if(!string.IsNullOrEmpty(p))candidates.Add(p.Trim('"'));}}
      using(var uninstall=root.OpenSubKey("Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall")){if(uninstall!=null)foreach(string name in uninstall.GetSubKeyNames())using(var item=uninstall.OpenSubKey(name)){if(item==null)continue;string display=item.GetValue("DisplayName") as string,location=item.GetValue("InstallLocation") as string;if(display!=null&&display.IndexOf(folder,StringComparison.OrdinalIgnoreCase)>=0&&!string.IsNullOrEmpty(location))candidates.Add(Path.Combine(location.Trim('"'),executable));}}
     }}catch{}
    }
-   foreach(string p in candidates.Distinct(StringComparer.OrdinalIgnoreCase))try{if(File.Exists(p)&&FileVersionInfo.GetVersionInfo(p).ProductMajorPart==26)return Path.GetFullPath(p);}catch{}return "";
+   foreach(string p in candidates.Distinct(StringComparer.OrdinalIgnoreCase))try{if(File.Exists(p)&&FileVersionInfo.GetVersionInfo(p).ProductMajorPart>0)return Path.GetFullPath(p);}catch{}return "";
   }
   public bool AdobeRunning(){foreach(var p in Process.GetProcesses())using(p){try{string name=p.ProcessName;if(name.IndexOf("Adobe Premiere Pro",StringComparison.OrdinalIgnoreCase)>=0||name.IndexOf("Adobe Media Encoder",StringComparison.OrdinalIgnoreCase)>=0)return true;}catch{}}return false;}
   static ValueRecord ReadValue(RegistryKey key,string name){var kind=key.GetValueKind(name);object value=key.GetValue(name,null,RegistryValueOptions.DoNotExpandEnvironmentNames);string data;

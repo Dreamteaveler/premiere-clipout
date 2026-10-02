@@ -1,3 +1,5 @@
+var MarkerExportBuild = { version: "1.1.10", build: "B08", hostVersion: "1.1.10", hostBuild: "B08" };
+window.MarkerExportBuild = MarkerExportBuild;
 /* CEP bridge: native inputs and results are primitive strings. */
 function MarkerExportSHA256(bytes) {
     var constants = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
@@ -23,11 +25,11 @@ function MarkerExportSHA256(bytes) {
 (function () {
     var rows = [], counter = 0, session = Date.now().toString(36) + Math.random().toString(36).substr(2, 4);
     window.MarkerExportLog = {
-        frontendVersion: "1.1.7",
-        begin: function (action) { var id = "ME117-" + session + "-" + (++counter); this.add(id, "action", action, "", "frontendVersion=1.1.7 begin"); return id; },
+        frontendVersion: MarkerExportBuild.version,
+        begin: function (action) { var id = "ME1110-" + MarkerExportBuild.build + "-" + session + "-" + (++counter); this.add(id, "action", action, "", "frontendVersion=" + MarkerExportBuild.version + " build=" + MarkerExportBuild.build + " begin"); return id; },
         add: function (id, stage, method, types, detail) { rows.push("[" + id + "] stage=" + stage + " call=" + method + " argTypes=" + types + (detail ? " " + detail : "")); if (rows.length > 512) rows.shift(); },
         append: function (text) { if (text) { var lines = text.split("\n"); for (var i = 0; i < lines.length; i++) rows.push(lines[i]); while (rows.length > 512) rows.shift(); } },
-        text: function () { return "Premiere ClipOut · 剪辑批量导出 · 界面 1.1.7 / 核心 1.1.4\r\n本地日志，不自动上传。\r\n" + rows.join("\r\n"); }
+        text: function () { return "Premiere ClipOut · 剪辑批量导出 · 界面 " + MarkerExportBuild.version + " / host " + MarkerExportBuild.hostVersion + " · " + MarkerExportBuild.build + "\r\n本地日志，不自动上传。\r\n" + rows.join("\r\n"); }
     };
 })();
 function CSInterface() {}
@@ -41,16 +43,18 @@ CSInterface.prototype.evalScript = function (script, callback) {
     callback = typeof callback === "function" ? callback : function () {};
     var log = window.MarkerExportLog, action = (/^([A-Za-z_$][\w$]*)/.exec(script) || ["", "unknown"])[1], id = log.begin(action);
     function quote(value) { return JSON.stringify(value).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029"); }
-    function hostRequest(hostPath, actionScript, requestId, actionName) {
+    function hostRequest(hostPath, actionScript, requestId, actionName, expectedVersion, expectedBuild, frontendVersion, bundleBuild) {
         var t = { id: requestId, stage: "hostload", method: "$.evalFile", types: "string", lines: [] };
         function pack(value) { return "__ME_TRACE_V1__\t" + encodeURIComponent(String(value)) + "\t" + encodeURIComponent(t.lines.join("\n")); }
         try {
             $.global.__MarkerExportTrace = t;
             MarkerExportHostVersion = "unreported";
+            MarkerExportHostBuild = "unreported";
             t.lines.push("[" + t.id + "] stage=hostload call=$.evalFile argTypes=string");
             $.evalFile(hostPath);
-            t.lines.push("[" + t.id + "] stage=hostloaded frontendVersion=1.1.7 hostVersion=" + (typeof MarkerExportHostVersion === "string" ? MarkerExportHostVersion : "unknown"));
-            if (MarkerExportHostVersion !== "1.1.4") throw new Error("Host version mismatch; expected 1.1.4, got " + MarkerExportHostVersion);
+            t.lines.push("[" + t.id + "] stage=hostloaded frontendVersion=" + frontendVersion + " build=" + bundleBuild + " hostVersion=" + (typeof MarkerExportHostVersion === "string" ? MarkerExportHostVersion : "unknown") + " hostBuild=" + MarkerExportHostBuild);
+            if (MarkerExportHostVersion !== expectedVersion) throw new Error("Host version mismatch; expected " + expectedVersion + ", got " + MarkerExportHostVersion);
+            if (MarkerExportHostBuild !== expectedBuild) throw new Error("Host build mismatch; expected " + expectedBuild + ", got " + MarkerExportHostBuild);
             t.stage = "dispatch"; t.method = actionName; t.types = "serialized primitive arguments";
             t.lines.push("[" + t.id + "] stage=dispatch call=" + t.method + " argTypes=" + t.types);
             var result = eval(actionScript);
@@ -87,7 +91,7 @@ CSInterface.prototype.evalScript = function (script, callback) {
                 for (var n=0;n<candidates.length;n++) { var candidate=candidates[n].replace(/\\/g,"/");if(seen[candidate])continue;seen[candidate]=true;var manifest=fs.readFile(candidate+"/CSXS/manifest.xml","UTF8");var version=manifest&&manifest.err===0?(/ExtensionBundleVersion="([^"]+)"/.exec(manifest.data)||[])[1]:"absent or unreadable";log.add(id,"installscan","same extension only","string","path="+candidate+" version="+(version||"unknown")); }
             }
         } catch (scanError) { log.add(id,"installscan","same extension only","string","unavailable "+scanError.message); }
-        var wrapped = "(" + hostRequest.toString() + ")(" + [quote(hostPath), quote(script), quote(id), quote(action)].join(",") + ")";
+        var wrapped = "(" + hostRequest.toString() + ")(" + [quote(hostPath), quote(script), quote(id), quote(action), quote(MarkerExportBuild.hostVersion), quote(MarkerExportBuild.hostBuild), quote(MarkerExportBuild.version), quote(MarkerExportBuild.build)].join(",") + ")";
         window.__adobe_cep__.evalScript(wrapped, function (raw) {
             var value = typeof raw === "string" ? raw : "ERROR: Native bridge returned " + typeof raw;
             if (value.indexOf("__ME_TRACE_V1__\t") === 0) {
@@ -95,6 +99,8 @@ CSInterface.prototype.evalScript = function (script, callback) {
                 catch (e) { value = "ERROR: Cannot decode host response; id=" + id + " " + e.message; }
             }
             log.add(id, "result", action, "string", /^ERROR:/.test(value) ? value.substr(0, 2000).replace(/[\r\n]/g, " ") : "OK");
+            var snapshotSummary = /^SNAPSHOT[^\r\n]*/m.exec(value);
+            if (snapshotSummary) log.add(id, "state-summary", action, "string", snapshotSummary[0]);
             callback(value);
         });
     } catch (e) { var text = "ERROR: " + e.message + "\nid=" + id + " stage=bridgepath call=getSystemPath name=" + e.name; log.add(id, "bridgepath", "getSystemPath", "string", text); callback(text); }

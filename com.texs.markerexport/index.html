@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="utf-8">
-    <title>Premiere ClipOut · 剪辑批量导出 1.1.9</title>
+    <title>Premiere ClipOut · 剪辑批量导出 1.1.10</title>
     <style>
         * { box-sizing: border-box; }
         html, body { margin: 0; height: 100%; overflow: hidden; background: #2b2b2b; color: #e8e8e8; font: 12px "Segoe UI", "Microsoft YaHei", sans-serif; }
@@ -87,14 +87,15 @@
             .top-item { flex: 1 1 100%; }
             button { padding: 4px 6px; font-size: 11.5px; } 
         }
-    </style>
+    #status.warn { color: #f5c842; }
+</style>
 </head>
 <body>
     <main class="panel">
         <div class="main">
             <div class="heading">
                 <h1>Premiere ClipOut · 剪辑批量导出</h1>
-                <span class="version">1.1.9</span>
+                <span id="buildVersion" class="version">1.1.10</span>
             </div>
             
             <div class="top">
@@ -143,11 +144,13 @@
                     <button id="logSaveBtn">保存 TXT</button>
                 </div>
                 <textarea id="logText" aria-label="本地排错日志" readonly rows="5"></textarea>
+                <p>嵌套／多机位保留父序列中的实例，仅导出目标及真实关联音频。外部调整层、字幕、背景音乐不会自动加入；依赖外部轨道的效果需单独核对。AME 完成前请勿修改引用的源序列。</p>
+                <p>支持原生图形与已核实的单边转场，保留片段自身效果；双边转场和可识别的跨轨遮罩尚需邻接上下文，当前明确跳过。父序列独立调整层可忽略，嵌套内部调整层保留。格式及透明通道请在 AME 中核对。</p>
                 <p id="hint">实际链接的 AV 合并；未链接音频独立导出。</p>
-                <p>"全部片段"仅处理当前活动序列。固定使用本机 AME 2026 的 H.264 与 WAV 系统预设；格式和边界在预览或入队时检查。</p>
+                <p>"全部片段"仅处理当前活动序列。固定使用本机 对应版本的 AME 的 H.264 与 WAV 系统预设；格式和边界在预览或入队时检查。</p>
                 <p>只加入 AME 队列，不自动编码。编码完成前保留 __ClipExport_ 副本；完成后可自行删除。</p>
                 <p>选择窗口可能在 PR 后面，可用 Alt+Tab 查看。日志只在本地复制或保存，不自动上传；分享前可检查其中的路径。</p>
-                <p class="version">界面 1.1.9 · 已验证核心 1.1.4</p>
+                <p class="version">界面 1.1.10 图形／单边转场候选实现（渲染待验收）</p>
             </details>
         </div>
         
@@ -158,6 +161,7 @@
             </div>
             <p class="ame-note">加入队列后，请在AME中自行调整所需编码格式与参数</p>
             <p class="file-note">更改格式后，请核对输出扩展名与路径。</p>
+            <p id="disabledClipNote" class="file-note">被禁用的片段不会被导出。</p>
             <div id="status" role="status" aria-live="polite"></div>
             <details id="statusDetails" hidden>
                 <summary id="statusDetailLabel">查看结果详情</summary>
@@ -166,6 +170,7 @@
         </div>
     </main>
     <script src="./js/CSInterface.js"></script>
+    <script src="./js/encoder-discovery.js"></script>
     <script src="./js/client.js"></script>
 </body>
 </html>

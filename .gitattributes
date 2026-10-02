@@ -1,0 +1,2 @@
+# Preserve reviewed payload bytes and host checksum across platforms.
+* -text

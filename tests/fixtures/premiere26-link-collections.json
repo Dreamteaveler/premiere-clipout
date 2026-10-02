@@ -1,0 +1,18 @@
+{
+  "provenance": "Actual LINK-DIAG-v1 output supplied by the user from Premiere Pro 26.0.0 on test1. Native linked collections include the queried clip; unlinked clips return null.",
+  "hostVersion": "26.0.0",
+  "storedToNativeId": {
+    "73": "000f4242", "93": "000f4244", "77": "000f4245", "75": "000f4246",
+    "74": "000f4247", "94": "000f4248", "78": "000f4249", "76": "000f424a"
+  },
+  "results": [
+    { "id": "000f4242", "numItems": 2, "length": 2, "numTracks": 2, "links": ["000f4242", "000f4247"] },
+    { "id": "000f4244", "links": null },
+    { "id": "000f4245", "numItems": 2, "length": 2, "numTracks": 2, "links": ["000f4245", "000f4249"] },
+    { "id": "000f4246", "numItems": 2, "length": 2, "numTracks": 2, "links": ["000f4246", "000f424a"] },
+    { "id": "000f4247", "numItems": 2, "length": 2, "numTracks": 2, "links": ["000f4242", "000f4247"] },
+    { "id": "000f4248", "links": null },
+    { "id": "000f4249", "numItems": 2, "length": 2, "numTracks": 2, "links": ["000f4245", "000f4249"] },
+    { "id": "000f424a", "numItems": 2, "length": 2, "numTracks": 2, "links": ["000f4246", "000f424a"] }
+  ]
+}

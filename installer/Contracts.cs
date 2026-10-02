@@ -23,7 +23,7 @@ namespace MarkerExportSetup {
  public sealed class AppInfo {
   public string PremierePath="", EncoderPath="", PremiereVersion="", EncoderVersion="",VideoPreset="",AudioPreset="";
   public int PremiereMajor, EncoderMajor, CepMajor; public bool PresetsReady;
-  public bool Compatible {get{return PremiereMajor==26&&EncoderMajor==26;}}
+  public bool Compatible {get{return PremiereMajor>0;}}
  }
  public interface IPlatform {
   string DebugKey {get;} void UseDebugKey(string key); AppInfo InspectApps(); bool AdobeRunning(); RegistryImage ReadDebug(); void ApplyDebug(RegistryImage image);

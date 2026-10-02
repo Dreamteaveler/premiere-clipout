@@ -1,6 +1,8 @@
 (function () {
     var cs = new CSInterface(), busy = false;
-    if (window.MarkerExportLog && typeof window.MarkerExportLog.add === "function") window.MarkerExportLog.add("SESSION", "frontend", "client.js", "", "executedClientVersion=1.1.9");
+    var buildLabel = document.getElementById("buildVersion"), build = window.MarkerExportBuild;
+    if (buildLabel && build) buildLabel.textContent = build.version;
+    if (window.MarkerExportLog && typeof window.MarkerExportLog.add === "function") window.MarkerExportLog.add("SESSION", "frontend", "client.js", "", "executedClientVersion=1.1.10");
     var mode = document.getElementById("mode"), scope = document.getElementById("scope");
     var folderBtn = document.getElementById("folderBtn");
     var previewBtn = document.getElementById("previewBtn");
@@ -14,29 +16,41 @@
     var controls = [mode, scope, folderBtn, previewBtn, exportBtn, refreshBtn, folderPath, folderApplyBtn, diagnoseBtn];
     function setStatus(text, kind) {
         text = text || "";
+        var summary = /Queued (\d+) of (\d+) jobs\. Skipped (\d+)\. Failed (\d+)\./.exec(text);
         var head = text.split(/\r?\n/)[0], count = /Queued (\d+) of (\d+) jobs/.exec(text);
         if (head.length > 110) head = head.substr(0, 107) + "…";
-        if (count) head += "（已入队 " + count[1] + "/" + count[2] + "）";
+        if (summary) head = "已入队 " + summary[1] + "；跳过 " + summary[3] + "；提交失败 " + summary[4] + "。请查看详情。";
+        else if (count) head += "（已入队 " + count[1] + "/" + count[2] + "）";
         status.textContent = head; status.className = kind || "";
         status.setAttribute("role", kind === "err" ? "alert" : "status");
         status.setAttribute("aria-live", kind === "err" ? "assertive" : "polite");
         statusFull.textContent = text;
         statusDetails.hidden = !text || text === head;
-        statusDetails.open = kind === "err" && !statusDetails.hidden;
+        statusDetails.open = (kind === "err" || kind === "warn") && !statusDetails.hidden;
         statusDetailLabel.textContent = kind === "err" ? "错误详情" : "查看结果详情";
     }
     function effectivePresets() { return bundled; }
     function name(path) { return path ? path.replace(/[\/\\]+$/, "").split(/[\/\\]/).pop() : "尚未选择"; }
-    function refreshPresets() {
+    function refreshPresets(afterReady) {
         if (busy) return;
-        bundled = {}; render(); setStatus("正在检测本机 AME 2026 格式…");
-        host("(function(){\n    var roots=[], names=[\"4E49434B_48323634/01 - Match Source - High bitrate.epr\",\"3F3F3F3F_57415645/Waveform Audio 48kHz 16-bit.epr\"];\n    function add(p){if(p && roots.join(\"|\").indexOf(p)<0)roots.push(p);}\n    add(Folder.startup.parent.fsName+\"/Adobe Media Encoder 2026\");\n    add($.getenv(\"ProgramW6432\")+\"/Adobe/Adobe Media Encoder 2026\");\n    add($.getenv(\"ProgramFiles\")+\"/Adobe/Adobe Media Encoder 2026\");\n    for(var i=0;i<roots.length;i++){\n        var base=roots[i]+\"/MediaIO/systempresets/\",v=File(base+names[0]),a=File(base+names[1]);\n        if(v.exists && a.exists)return \"OK\\t\"+v.fsName+\"\\t\"+a.fsName;\n    }\n    return \"ERROR: 未找到本机 AME 2026 的 H.264 与 WAV 系统预设。请确认已安装 AME 2026；插件不会猜测或替换编码格式。\";\n})()", function (text) {
-            var fields = text.split("\t");
-            if (fields.length !== 3 || fields[0] !== "OK" || !fields[1] || !fields[2]) { bundled = {}; render(); setStatus(text.indexOf("ERROR:") === 0 ? text.replace(/^ERROR:/, "错误：") : "无法检测本机格式：Premiere 返回了无效结果。", "err"); return; }
-            bundled = { video: fields[1], audio: fields[2] }; render();
-            setStatus(settings.folder ? "本机 H.264 与 WAV 格式已就绪。" : "本机格式已就绪，请选择输出文件夹。");
+        bundled = {}; render(); setStatus("正在检测与当前 Premiere 匹配的 AME…");
+        host("app.version + \"\\t\" + Folder.startup.fsName", function (identity) {
+            if (/^ERROR:|^EvalScript error/i.test(identity)) { bundled={};render();result(identity);return; }
+            var fields=identity.split("\t"), encoder;
+            try {
+                if(fields.length!==2) throw new Error("无法确认当前 Premiere 版本与安装位置，未提交导出。");
+                var load=window.cep_node && window.cep_node.require ? function(name){return window.cep_node.require(name);} : (typeof require === "function" ? require : null);
+                encoder=window.EncoderDiscovery.find(fields[0],fields[1],load);
+            } catch(e) { bundled={}; render(); setStatus(e.message,"err"); return; }
+            var base=encoder.path.replace(/\\/g,"/")+"/MediaIO/systempresets/";
+            var video=base+"4E49434B_48323634/01 - Match Source - High bitrate.epr", audio=base+"3F3F3F3F_57415645/Waveform Audio 48kHz 16-bit.epr";
+            host("(function(){var v=File("+quote(video)+"),a=File("+quote(audio)+");return v.exists && a.exists ? 'OK' : 'MISSING';})()",function(result){
+                if(result!=="OK"){bundled={};render();setStatus("已找到与当前 Premiere 匹配的 AME，但 H.264 / WAV 系统预设缺失，未提交导出。请检查 AME 安装完整性。","err");return;}
+                bundled={video:video,audio:audio};render();setStatus("本机匹配的 AME 格式已就绪，请核对输出文件夹。");if(typeof afterReady === "function")afterReady();
+            });
         });
     }
+
     function quote(value) { return JSON.stringify(value).replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029"); }
     function render() {
         mode.value = settings.mode; scope.value = settings.scope;
@@ -44,7 +58,7 @@
         var clipMode = settings.mode === "clipboundary";
         document.getElementById("scopeRow").hidden = !clipMode;
         document.getElementById("hint").textContent = clipMode ?
-            "有真实链接的视频与音频合并导出；未链接音频单独导出。每项只包含自己的素材。" :
+            "有真实链接的视频与音频合并导出；未链接音频单独导出。每项仅保留目标片段及真实关联音频，支持嵌套／多机位实例。" :
             "按标记区间导出序列的完整混合画面与声音；末尾点标记作为最后区间的结束。";
         var paths = [["folderVal", settings.folder]];
         paths.forEach(function (entry) { var el = document.getElementById(entry[0]); el.textContent = name(entry[1]); el.title = entry[1] || ""; });
@@ -88,6 +102,14 @@
         var localized = (text || "Premiere 未返回结果。")
             .replace(/^Planned (\d+) jobs: (\d+) video, (\d+) audio\./, "计划 $1 项任务：$2 个视频，$3 个独立音频。")
             .replace(/Build: /g, "版本：")
+            .replace(/Native graphic jobs: (\d+)\./g, "原生图形任务：$1 项。")
+            .replace(/Single-sided transitions retained: (\d+)\./g, "计划保留单边转场：$1 处。")
+            .replace(/Sequence-source jobs: (\d+)\./g, "嵌套／多机位任务：$1 项。")
+            .replace(/Task groups: (\d+); planned=(\d+); skipped=(\d+)\./g, "任务组：$1；计划 $2；跳过 $3。")
+            .replace(/A two-sided or unclassified transition requires neighboring clip context; this job is skipped\./g, "该双边或未分类转场依赖邻接片段，当前版本尚未实现所需上下文，已跳过此任务。")
+            .replace(/Cross-track matte dependency is not supported by target-only isolation; matte context must be preserved explicitly\./g, "该效果依赖其他轨道的遮罩；当前隔离方式尚未保留遮罩上下文，已跳过此任务。")
+            .replace(/Cannot prove transition sides/g, "无法核实转场的单边方向")
+            .replace(/Clone does not preserve the native transition and its exact boundaries\./g, "序列副本未通过原生转场及精确边界校验，尚未入队。")
             .replace(/sequence frames: /g, "序列帧：")
             .replace(/\(Out exclusive\)/g, "（出点不含）")
             .replace(/ticks\/frame=/g, "每帧 ticks=")
@@ -95,16 +117,33 @@
             .replace(/; no video-frame rounding/g, "；不按视频帧截断")
             .replace(/ frames; /g, " 帧； ")
             .replace(/^Queued (\d+) export\(s\) in Adobe Media Encoder\. Queue NOT started\./, "已将 $1 项任务加入 AME，尚未开始编码。")
+            .replace(/Queued (\d+) of (\d+) jobs\. Skipped (\d+)\. Failed (\d+)\./g, "本轮已入队 $1/$2 个有效任务；跳过 $3 个任务组；提交失败 $4 个。")
+            .replace(/Timeline inventory: (\d+) clips in the active sequence; scope=(selected|all)\. Linked AV counts as one task group\./g, "当前序列时间线共 $1 个片段；范围=$2。真实链接 AV 按一个任务组计数。")
+            .replace(/scope=all/g, "范围=全部片段")
+            .replace(/scope=selected/g, "范围=已选片段")
+            .replace(/SNAPSHOT exactSourceTicks=(\d+) declaredSourceFrames=(\d+) serializedTimeline=(\d+) unknown=(\d+)/g, "快照状态：源 ticks 对应 $1；源帧对应 $2；时间线帧序列化对应 $3；未知 $4")
+            .replace(/Skipped (\d+)\./g, "跳过 $1 个任务组。")
+            .replace(/^SKIP /gm, "跳过：")
+            .replace(/^FAIL /gm, "提交失败：")
+            .replace(/already submitted or acknowledgement uncertain; not submitted again\./g, "本会话已提交或回执不确定；为避免重复，不再提交。")
+            .replace(/Queue NOT started\. Accepted job IDs confirm submission only; final AME encoding results are not observed\./g, "未自动启动 AME 队列。任务 ID 仅证明接受入队；未监测实际编码完成或失败。")
             .replace(/Output folder: /g, "输出目录：")
             .replace(/^ERROR:/, "错误：")
-            .replace(/Premiere changed exact export boundaries \(frame\/sample rounding\); no jobs were queued\./g, "Premiere 读回边界未通过帧／样本校验；尚未入队。")
+            .replace(/Cannot identify a clip\'s source project item\./g, "无法确认该片段的源项目项：")
+            .replace(/; nothing was queued\. Source identity is required; no name\/path matching or clip skipping\./g, "；尚未入队，不会按名称猜源或跳过片段。")
+            .replace(/Premiere changed exact export boundaries \(frame\/sample rounding\); this job was not queued\./g, "Premiere 读回边界未通过帧／样本校验；尚未入队。")
+            .replace(/Cannot inspect clip enabled state\./g, "无法确认片段启用状态：")
+            .replace(/A requested linked clip is disabled; enable it or change the selection\./g, "该任务组包含真实禁用片段，已跳过：")
+            .replace(/snapshot has no exact unambiguous state mapping\./g, "序列快照中没有精确且唯一的状态对应，未猜测启用状态。")
             .replace(/A requested source is offline\./g, "当前序列中请求的源素材被报告为离线：")
             .replace(/Cannot inspect source offline state\./g, "无法确认源素材离线状态：")
             .replace(/Preset has no valid export file extension; no fallback format will be guessed\./g, "预设未返回有效扩展名，请检查所选 .epr；没有自动猜测格式。")
             .replace(/ \| timeline /g, " | 时间线 ")
             .replace(/  video source In\/Out: /g, "  视频源范围：")
             .replace(/  audio source In\/Out: /g, "  音频源范围：");
-        setStatus(localized, /^ERROR:|^EvalScript error/i.test(text) || !text ? "err" : "ok");
+        var counts = /Queued (\d+) of (\d+) jobs\. Skipped (\d+)\. Failed (\d+)\./.exec(text);
+        if (counts) localized = "已入队 " + counts[1] + "；跳过 " + counts[3] + "；提交失败 " + counts[4] + "。\n" + localized;
+        setStatus(localized, /^ERROR:|^EvalScript error/i.test(text) || !text ? "err" : /Skipped [1-9]\d*\./.test(text) ? "warn" : "ok");
     }
     try {
         var stored = JSON.parse(localStorage.getItem("markerExportSettings") || "{}");
@@ -126,15 +165,18 @@
             settings.folder = text.substring(3); save(); render(); setStatus("输出路径已验证并记住。", "ok");
         });
     });
-    refreshBtn.addEventListener("click", refreshPresets);
-    previewBtn.addEventListener("click", function () { setStatus("正在读取剪辑边界、真实链接与计划文件名…"); host("previewClipExports(" + [quote(settings.scope), quote(effectivePresets().video), quote(effectivePresets().audio)].join(",") + ")", result); });
+    refreshBtn.addEventListener("click", function(){refreshPresets();});
+    previewBtn.addEventListener("click", function () { if (busy) return; setStatus("正在读取剪辑边界、真实链接与计划文件名…"); host("previewClipExports(" + [quote(settings.scope), quote(effectivePresets().video), quote(effectivePresets().audio)].join(",") + ")", result); });
     diagnoseBtn.addEventListener("click", function () { setStatus("只读检查当前序列与已有副本，不入队…"); host("diagnoseExportBoundaries(" + quote(settings.scope) + ")", result); });
-    exportBtn.addEventListener("click", function () {
-        var effective = effectivePresets(), args = [quote(settings.folder), quote(effective.video)];
-        var fn = "exportMarkersAsClips";
-        if (settings.mode === "clipboundary") { fn = "exportClipsAsFiles"; args.push(quote(effective.audio), quote(settings.scope)); }
-        setStatus("正在准备隔离序列并加入队列…"); host(fn + "(" + args.join(",") + ")", result);
+    exportBtn.addEventListener("click", function () { if (busy) return;
+        refreshPresets(function(){
+            var effective = effectivePresets(), args = [quote(settings.folder), quote(effective.video)];
+            var fn = "exportMarkersAsClips";
+            if (settings.mode === "clipboundary") { fn = "exportClipsAsFiles"; args.push(quote(effective.audio), quote(settings.scope)); }
+            setStatus("正在准备隔离序列并加入队列…"); host(fn + "(" + args.join(",") + ")", result);
+        });
     });
+
     function showLog() { logText.value = window.MarkerExportLog ? window.MarkerExportLog.text() : "日志组件不可用。"; }
     logCopyBtn.addEventListener("click", function () {
         showLog();
@@ -148,7 +190,7 @@
             var fs = window.cep && window.cep.fs;
             if (!fs || typeof fs.writeFile !== "function") throw new Error("本地文件接口不可用，可复制日志。");
             var stamp = new Date().toISOString().replace(/[:.]/g, "-");
-            var target = settings.folder.replace(/[\/\\]+$/, "") + "/MarkerExport-1.1.9-log-" + stamp + ".txt";
+            var target = settings.folder.replace(/[\/\\]+$/, "") + "/MarkerExport-1.1.10-log-" + stamp + ".txt";
             var response = fs.writeFile(target, "\ufeff" + logText.value, "UTF8");
             if (!response || response.err !== 0) throw new Error("写入失败，错误码 " + (response && response.err));
             setStatus("日志已保存：" + target + "\n不会自动上传。", "ok");

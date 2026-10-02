@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<ExtensionManifest Version="11.0" ExtensionBundleId="com.texs.markerexport"
-                   ExtensionBundleVersion="1.1.9"
+<ExtensionManifest Version="5.0" ExtensionBundleId="com.texs.markerexport"
+                   ExtensionBundleVersion="1.1.10"
                    ExtensionBundleName="Premiere ClipOut · 剪辑批量导出"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <ExtensionList>
-        <Extension Id="com.texs.markerexport.panel" Version="1.1.9"/>
+        <Extension Id="com.texs.markerexport.panel" Version="1.1.10"/>
     </ExtensionList>
     <ExecutionEnvironment>
         <HostList>
-            <!-- PPRO = Premiere Pro. Broad range covers 2022 (22.x) through 2026 (26.x). -->
-            <Host Name="PPRO" Version="[22.0,99.9]"/>
+            <!-- PPRO = Premiere Pro. 2021 uses 15.x; host range permits testing, not a compatibility guarantee. -->
+            <Host Name="PPRO" Version="[8.0,99.9]"/>
         </HostList>
         <LocaleList>
             <Locale Code="All"/>
         </LocaleList>
         <RequiredRuntimeList>
-            <RequiredRuntime Name="CSXS" Version="9.0"/>
+            <RequiredRuntime Name="CSXS" Version="5.0"/>
         </RequiredRuntimeList>
     </ExecutionEnvironment>
     <DispatchInfoList>
@@ -24,6 +24,7 @@
                 <Resources>
                     <MainPath>./index.html</MainPath>
                     <ScriptPath>./host/export-markers.jsx</ScriptPath>
+                    <CEFCommandLine><Parameter>--enable-nodejs</Parameter></CEFCommandLine>
                 </Resources>
                 <Lifecycle>
                     <AutoVisible>true</AutoVisible>

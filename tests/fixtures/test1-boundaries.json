@@ -1,0 +1,92 @@
+{
+  "provenance": "Read-only interpretation of supplied test1.prproj; not a live Premiere API result.",
+  "frameTicks": "10160640000",
+  "clips": [
+    {
+      "id": "73",
+      "kind": "Video",
+      "track": 0,
+      "start": "0",
+      "end": "46048020480000",
+      "sourceIn": "0",
+      "sourceOut": "46048020480000"
+    },
+    {
+      "id": "93",
+      "kind": "Video",
+      "track": 0,
+      "start": "79588293120000",
+      "end": "129040128000000",
+      "sourceIn": "115689047040000",
+      "sourceOut": "165140881920000"
+    },
+    {
+      "id": "77",
+      "kind": "Video",
+      "track": 0,
+      "start": "129040128000000",
+      "end": "160253614080000",
+      "sourceIn": "165140881920000",
+      "sourceOut": "196354368000000"
+    },
+    {
+      "id": "75",
+      "kind": "Video",
+      "track": 1,
+      "start": "23308508160000",
+      "end": "92949534720000",
+      "sourceIn": "46048020480000",
+      "sourceOut": "115689047040000"
+    },
+    {
+      "id": "74",
+      "kind": "Audio",
+      "track": 0,
+      "start": "0",
+      "end": "46048020480000",
+      "sourceIn": "0",
+      "sourceOut": "46048020480000"
+    },
+    {
+      "id": "94",
+      "kind": "Audio",
+      "track": 0,
+      "start": "79588293120000",
+      "end": "129040128000000",
+      "sourceIn": "115689047040000",
+      "sourceOut": "165140881920000"
+    },
+    {
+      "id": "78",
+      "kind": "Audio",
+      "track": 0,
+      "start": "129040128000000",
+      "end": "160253614080000",
+      "sourceIn": "165140881920000",
+      "sourceOut": "196354368000000"
+    },
+    {
+      "id": "76",
+      "kind": "Audio",
+      "track": 1,
+      "start": "23308508160000",
+      "end": "92949534720000",
+      "sourceIn": "46048020480000",
+      "sourceOut": "115689047040000"
+    }
+  ],
+  "explicitStoredLinks": [
+    [
+      "73",
+      "74"
+    ],
+    [
+      "75",
+      "76"
+    ],
+    [
+      "77",
+      "78"
+    ]
+  ]
+}
