@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionManifest Version="11.0" ExtensionBundleId="com.texs.markerexport"
+                   ExtensionBundleVersion="1.1.9"
+                   ExtensionBundleName="Premiere ClipOut · 剪辑批量导出"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <ExtensionList>
+        <Extension Id="com.texs.markerexport.panel" Version="1.1.9"/>
+    </ExtensionList>
+    <ExecutionEnvironment>
+        <HostList>
+            <!-- PPRO = Premiere Pro. Broad range covers 2022 (22.x) through 2026 (26.x). -->
+            <Host Name="PPRO" Version="[22.0,99.9]"/>
+        </HostList>
+        <LocaleList>
+            <Locale Code="All"/>
+        </LocaleList>
+        <RequiredRuntimeList>
+            <RequiredRuntime Name="CSXS" Version="9.0"/>
+        </RequiredRuntimeList>
+    </ExecutionEnvironment>
+    <DispatchInfoList>
+        <Extension Id="com.texs.markerexport.panel">
+            <DispatchInfo>
+                <Resources>
+                    <MainPath>./index.html</MainPath>
+                    <ScriptPath>./host/export-markers.jsx</ScriptPath>
+                </Resources>
+                <Lifecycle>
+                    <AutoVisible>true</AutoVisible>
+                </Lifecycle>
+                <UI>
+                    <Type>Panel</Type>
+                    <Menu>Premiere ClipOut · 剪辑批量导出</Menu>
+                    <Geometry>
+                        <Size>
+                            <Height>440</Height>
+                            <Width>340</Width>
+                        </Size>
+                    </Geometry>
+                </UI>
+            </DispatchInfo>
+        </Extension>
+    </DispatchInfoList>
+</ExtensionManifest>
